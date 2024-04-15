@@ -1,5 +1,7 @@
 Config = {
-    Items = {"nanskip.red_voxel"}
+    Items = {
+        "nanskip.red_voxel", "nanskip.wood_scythe"
+    }
 }
 
 Client.OnStart = function()
@@ -42,6 +44,7 @@ function generateWheat()
                     e = Event()
                     e.pos1 = self.pos[1]
                     e.pos2 = self.pos[2]
+                    e.name = "removeWheat"
                     e:SendTo(Server)
                 end
             end
@@ -97,19 +100,6 @@ Client.DidReceiveEvent = function(e)
     end
 end
 
-Server.DidReceiveEvent = function(e)
-    if e.pos1 ~= nil then
-        wheats[e.pos1][e.pos2] = false
-    end
-end
-
-Server.OnPlayerJoin = function(player)
-    e = Event()
-
-    e.wheats = JSON:Encode(wheats)
-    e:SendTo(player)
-end
-
 Server.OnStart = function()
     syncTimer = 0
     wheats = {}
@@ -121,6 +111,39 @@ Server.OnStart = function()
         end
         wheats[i] = row
     end
+
+    defaultPlayerData = {
+        scytheLevel = 1,
+        bagSize = 15,
+        wheatWorth = 1,
+    }
+end
+
+Server.DidReceiveEvent = function(e)
+    if e.name == "removeWheat" then
+        wheats[e.pos1][e.pos2] = false
+    end
+end
+
+Server.OnPlayerJoin = function(player)
+    e = Event()
+
+    e.wheats = JSON:Encode(wheats)
+    e:SendTo(player)
+
+    local playerData = KeyValueStore(player.UserID)
+    playerData:Get("data", function(success, results)
+        if success then
+            print("player's save exists")
+        else
+            print("player's save doesn't exist")
+            playerData:Set("data", JSON:Encode(defaultPlayerData), function(success, results)
+                if success then
+                    print("saved new player")
+                end
+            end)
+        end
+    end)
 end
 
 Server.Tick = function()
